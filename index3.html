@@ -1,0 +1,1288 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Premium C++ Backtracking Visualizer</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Inter', 'Segoe UI', sans-serif;
+      background: radial-gradient(circle at 20% 80%, #0a0a0a 0%, #1a0033 40%, #000511 100%);
+      color: #f8fafc;
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    .container {
+      max-width: 1900px;
+      margin: 0 auto;
+      padding: 1rem;
+    }
+
+    .particles {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      z-index: 0;
+      opacity: 0.3;
+    }
+
+    .particle {
+      position: absolute;
+      width: 2px;
+      height: 2px;
+      background: #64b5f6;
+      border-radius: 50%;
+      animation: float 8s infinite linear;
+    }
+
+    @keyframes float {
+      0% { transform: translateY(100vh) rotate(0deg); opacity: 0; }
+      10% { opacity: 1; }
+      90% { opacity: 1; }
+      100% { transform: translateY(-10px) rotate(360deg); opacity: 0; }
+    }
+
+    header {
+      text-align: center;
+      padding: 3rem 2rem;
+      background: rgba(255,255,255,0.03);
+      backdrop-filter: blur(20px);
+      border-radius: 24px;
+      margin-bottom: 2rem;
+      border: 1px solid rgba(100, 181, 246, 0.2);
+      box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+      position: relative;
+      z-index: 1;
+    }
+
+    h1 {
+      background: linear-gradient(135deg, #64b5f6, #42a5f5, #2196f3, #1976d2);
+      background-size: 300% 300%;
+      animation: gradientShift 4s ease-in-out infinite;
+      background-clip: text;
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      margin: 0;
+      font-size: clamp(2rem, 4vw, 3rem);
+      font-weight: 700;
+      letter-spacing: -0.02em;
+    }
+
+    @keyframes gradientShift {
+      0%, 100% { background-position: 0% 50%; }
+      50% { background-position: 100% 50%; }
+    }
+
+    .subtitle {
+      margin-top: 1rem;
+      opacity: 0.8;
+      font-size: 1.1rem;
+      font-weight: 400;
+    }
+
+    .controls {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 1.5rem;
+      margin-bottom: 2rem;
+      position: relative;
+      z-index: 1;
+    }
+
+    .control-group {
+      background: rgba(255,255,255,0.04);
+      padding: 2rem;
+      border-radius: 20px;
+      border: 1px solid rgba(255,255,255,0.1);
+      backdrop-filter: blur(20px);
+      transition: all 0.3s ease;
+      box-shadow: 0 4px 24px rgba(0,0,0,0.2);
+    }
+
+    .control-group:hover {
+      border-color: rgba(100, 181, 246, 0.3);
+      box-shadow: 0 8px 40px rgba(100, 181, 246, 0.1);
+      transform: translateY(-2px);
+    }
+
+    .control-group h3 {
+      margin-bottom: 1.5rem;
+      color: #64b5f6;
+      font-size: 1.2rem;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .main-content {
+      display: grid;
+      grid-template-columns: 1fr 450px;
+      gap: 1.5rem;
+      min-height: 700px;
+      position: relative;
+      z-index: 1;
+    }
+
+    .tree-section {
+      background: rgba(255,255,255,0.02);
+      border-radius: 24px;
+      border: 1px solid rgba(255,255,255,0.1);
+      backdrop-filter: blur(20px);
+      overflow: hidden;
+      position: relative;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+    }
+
+    .code-section {
+      background: rgba(0,0,0,0.4);
+      border-radius: 24px;
+      border: 1px solid rgba(255,255,255,0.1);
+      backdrop-filter: blur(20px);
+      display: flex;
+      flex-direction: column;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+    }
+
+    .code-header {
+      padding: 1.5rem;
+      border-bottom: 1px solid rgba(255,255,255,0.1);
+      background: rgba(255,255,255,0.05);
+    }
+
+    .code-content {
+      flex: 1;
+      overflow-y: auto;
+      font-family: 'Fira Code', 'Consolas', monospace;
+      font-size: 0.9rem;
+      line-height: 1.6;
+      max-height: 350px;
+    }
+
+    .code-line {
+      display: flex;
+      padding: 0.5rem 1.5rem;
+      border-left: 3px solid transparent;
+      transition: all 0.4s ease;
+      white-space: pre;
+    }
+
+    .code-line-number {
+      color: #64748b;
+      margin-right: 1.5rem;
+      min-width: 2.5rem;
+      text-align: right;
+      user-select: none;
+      font-weight: 500;
+    }
+
+    .code-line-content {
+      flex: 1;
+      color: #f1f5f9;
+    }
+
+    .code-line.active {
+      background: rgba(255, 152, 0, 0.15);
+      border-left-color: #ff9800;
+      animation: codeHighlight 2s ease-in-out infinite alternate;
+      box-shadow: inset 0 0 20px rgba(255, 152, 0, 0.1);
+    }
+
+    .state-panel {
+      background: rgba(0,0,0,0.3);
+      padding: 1.5rem;
+      border-top: 1px solid rgba(255,255,255,0.1);
+      max-height: 180px;
+      overflow-y: auto;
+    }
+
+    .state-panel h4 {
+      margin: 0 0 1rem 0;
+      color: #64b5f6;
+      font-size: 1.1rem;
+      font-weight: 600;
+    }
+
+    .state-item {
+      background: rgba(255,255,255,0.08);
+      padding: 0.8rem;
+      margin: 0.5rem 0;
+      border-radius: 8px;
+      border-left: 3px solid #2196f3;
+      font-family: 'Fira Code', monospace;
+      font-size: 0.85rem;
+      transition: all 0.3s ease;
+    }
+
+    .variable-display {
+      background: rgba(255,255,255,0.06);
+      padding: 1rem;
+      margin: 1rem 0;
+      border-radius: 12px;
+      font-family: 'Fira Code', monospace;
+      font-size: 0.9rem;
+      max-height: 120px;
+      overflow-y: auto;
+      border: 1px solid rgba(255,255,255,0.1);
+    }
+
+    .variable-name {
+      color: #60a5fa;
+      font-weight: 600;
+    }
+
+    .variable-value {
+      color: #34d399;
+    }
+
+    input, button, select {
+      padding: 0.9rem 1.2rem;
+      border: none;
+      border-radius: 12px;
+      margin: 0.4rem 0;
+      font-size: 1rem;
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      font-weight: 500;
+    }
+
+    input, select {
+      background: rgba(15, 23, 42, 0.8);
+      color: #f1f5f9;
+      border: 2px solid rgba(100, 181, 246, 0.2);
+      width: 100%;
+      box-sizing: border-box;
+    }
+
+    input:focus, select:focus {
+      outline: none;
+      border-color: #64b5f6;
+      box-shadow: 0 0 0 4px rgba(100, 181, 246, 0.1);
+      background: rgba(15, 23, 42, 1);
+    }
+
+    button {
+      background: linear-gradient(135deg, #1f6feb, #2196f3);
+      color: white;
+      cursor: pointer;
+      border: none;
+      font-weight: 600;
+      position: relative;
+      overflow: hidden;
+      box-shadow: 0 4px 14px rgba(31, 111, 235, 0.3);
+    }
+
+    button:hover:not(:disabled) {
+      background: linear-gradient(135deg, #388bfd, #42a5f5);
+      transform: translateY(-2px);
+      box-shadow: 0 8px 25px rgba(31, 111, 235, 0.4);
+    }
+
+    button:active:not(:disabled) {
+      transform: translateY(0);
+    }
+
+    button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      transform: none;
+      box-shadow: none;
+    }
+
+    .stats-panel {
+      position: absolute;
+      top: 15px;
+      right: 15px;
+      background: rgba(0,0,0,0.8);
+      padding: 1.5rem;
+      border-radius: 16px;
+      font-size: 0.9rem;
+      backdrop-filter: blur(20px);
+      border: 1px solid rgba(255,255,255,0.15);
+      z-index: 10;
+      min-width: 200px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.4);
+    }
+
+    .stats-panel div {
+      margin: 0.5rem 0;
+      display: flex;
+      justify-content: space-between;
+    }
+
+    .stats-panel strong {
+      color: #64b5f6;
+    }
+
+    .node circle {
+      stroke-width: 2.5px;
+      transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+      cursor: pointer;
+      filter: drop-shadow(0 3px 8px rgba(0,0,0,0.4));
+    }
+
+    .node circle:hover {
+      filter: drop-shadow(0 6px 20px rgba(100, 181, 246, 0.6));
+      transform: scale(1.1);
+    }
+
+    .node text {
+      fill: white;
+      font-size: 0.75rem;
+      pointer-events: none;
+      text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
+      font-weight: 500;
+      font-family: 'Fira Code', monospace;
+    }
+
+    .link {
+      fill: none;
+      stroke: #475569;
+      stroke-width: 2.5px;
+      transition: all 0.4s ease;
+      opacity: 0.7;
+    }
+
+    .link:hover {
+      stroke: #64b5f6;
+      opacity: 1;
+    }
+
+    .node.exploring circle {
+      fill: #ff9800 !important;
+      stroke: #f57c00;
+      animation: pulse 1.5s infinite;
+    }
+
+    .node.completed circle {
+      fill: #22c55e !important;
+      stroke: #16a34a;
+    }
+
+    .node.backtracked circle {
+      fill: #6b7280 !important;
+      stroke: #4b5563;
+    }
+
+    .node.default circle {
+      fill: #1f2937 !important;
+      stroke: #4b5563;
+    }
+
+    @keyframes pulse {
+      0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(255, 152, 0, 0.7); }
+      50% { transform: scale(1.15); box-shadow: 0 0 0 10px rgba(255, 152, 0, 0); }
+      100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(255, 152, 0, 0); }
+    }
+
+    @keyframes codeHighlight {
+      0% { background: rgba(255, 152, 0, 0.15); }
+      100% { background: rgba(255, 152, 0, 0.25); }
+    }
+
+    .playback-controls {
+      display: flex;
+      gap: 0.8rem;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+
+    .preset-buttons {
+      display: flex;
+      gap: 0.8rem;
+      flex-wrap: wrap;
+    }
+
+    .preset-buttons button {
+      padding: 0.6rem 1.2rem;
+      font-size: 0.9rem;
+      background: rgba(100, 181, 246, 0.1);
+      border: 1px solid rgba(100, 181, 246, 0.3);
+    }
+
+    .preset-buttons button:hover {
+      background: rgba(100, 181, 246, 0.2);
+      border-color: rgba(100, 181, 246, 0.5);
+    }
+
+    .keyword { color: #c792ea; font-weight: 600; }
+    .function { color: #82aaff; font-weight: 500; }
+    .string { color: #c3e88d; }
+    .number { color: #f78c6c; font-weight: 500; }
+    .comment { color: #546e7a; font-style: italic; }
+    .variable { color: #eeffff; }
+    .type { color: #ffcb6b; }
+
+    .message-box {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      padding: 1rem 1.5rem;
+      border-radius: 12px;
+      font-weight: 500;
+      z-index: 1000;
+      opacity: 0;
+      transform: translateX(100px);
+      transition: all 0.3s ease;
+      backdrop-filter: blur(10px);
+      border: 1px solid;
+    }
+
+    .message-box.show {
+      opacity: 1;
+      transform: translateX(0);
+    }
+
+    .message-box.error {
+      background: rgba(239, 68, 68, 0.1);
+      border-color: rgba(239, 68, 68, 0.3);
+      color: #fca5a5;
+    }
+
+    .message-box.success {
+      background: rgba(34, 197, 94, 0.1);
+      border-color: rgba(34, 197, 94, 0.3);
+      color: #86efac;
+    }
+
+    .progress-bar {
+      width: 100%;
+      height: 4px;
+      background: rgba(255,255,255,0.1);
+      border-radius: 2px;
+      overflow: hidden;
+      margin: 1rem 0;
+    }
+
+    .progress-fill {
+      height: 100%;
+      background: linear-gradient(90deg, #64b5f6, #42a5f5);
+      width: 0%;
+      transition: width 0.3s ease;
+      border-radius: 2px;
+    }
+
+    @media (max-width: 1400px) {
+      .main-content {
+        grid-template-columns: 1fr;
+        grid-template-rows: 1fr auto;
+      }
+      
+      .code-section {
+        min-height: 500px;
+      }
+
+      .stats-panel {
+        position: relative;
+        margin-bottom: 1rem;
+        top: 0;
+        right: 0;
+      }
+    }
+
+    @media (max-width: 768px) {
+      .controls {
+        grid-template-columns: 1fr;
+      }
+      
+      .control-group {
+        padding: 1.5rem;
+      }
+      
+      .playback-controls {
+        justify-content: center;
+      }
+      
+      .preset-buttons {
+        justify-content: center;
+      }
+    }
+
+    ::-webkit-scrollbar {
+      width: 8px;
+    }
+
+    ::-webkit-scrollbar-track {
+      background: rgba(255,255,255,0.05);
+    }
+
+    ::-webkit-scrollbar-thumb {
+      background: rgba(100, 181, 246, 0.5);
+      border-radius: 4px;
+    }
+
+    ::-webkit-scrollbar-thumb:hover {
+      background: rgba(100, 181, 246, 0.7);
+    }
+  </style>
+</head>
+<body>
+  <div class="particles" id="particles"></div>
+
+  <div class="container">
+    <header>
+      <h1>🔄 C++ Backtracking Visualizer</h1>
+      <p class="subtitle">Interactive visualization of the subsetsWithDup algorithm with step-by-step execution</p>
+    </header>
+
+    <div class="message-box" id="messageBox"></div>
+    
+    <div class="controls">
+      <div class="control-group">
+        <h3>📊 Input & Configuration</h3>
+        <input type="text" id="arrayInput" placeholder="Enter numbers (e.g., 1,2,2)" aria-label="Array input" value="1,2,2" />
+        <div class="preset-buttons">
+          <button onclick="setPreset('1,2,3')" title="Simple 3-element array">Simple</button>
+          <button onclick="setPreset('1,2,2')" title="Array with duplicates">Duplicates</button>
+          <button onclick="setPreset('1,2,3,4')" title="Complex 4-element array">Complex</button>
+          <button onclick="setPreset('2,1,2,1')" title="Multiple duplicates">Multi-Dup</button>
+        </div>
+      </div>
+
+      <div class="control-group">
+        <h3>🎮 Tree Controls</h3>
+        <button id="visualizeBtn" title="Generate and visualize the recursion tree">🚀 Visualize</button>
+        <button id="resetBtn" title="Reset everything to initial state">🔄 Reset</button>
+        <div class="progress-bar">
+          <div class="progress-fill" id="progressFill"></div>
+        </div>
+      </div>
+
+      <div class="control-group">
+        <h3>▶️ Animation Controls</h3>
+        <div class="playback-controls">
+          <button id="playBtn" title="Start animation" disabled>▶️ Play</button>
+          <button id="pauseBtn" disabled title="Pause animation">⏸️ Pause</button>
+          <button id="stepBtn" title="Execute one step" disabled>⭐ Step</button>
+        </div>
+        <div>
+          <label>Speed: <span id="speedLabel">1.0s</span></label>
+          <input type="range" id="speedSlider" min="100" max="2000" step="100" value="1000" style="width: 100px;" 
+                 aria-label="Animation speed" title="Adjust animation speed">
+        </div>
+      </div>
+    </div>
+
+    <div class="main-content">
+      <div class="tree-section" id="treeContainer">
+        <div class="stats-panel" id="statsPanel" style="display: none;">
+          <div><strong>Input:</strong> <span id="currentInput">-</span></div>
+          <div><strong>Total Steps:</strong> <span id="totalSteps">0</span></div>
+          <div><strong>Current Step:</strong> <span id="currentStep">0</span></div>
+          <div><strong>Progress:</strong> <span id="progressPercent">0%</span></div>
+          <div><strong>Subsets Found:</strong> <span id="subsetsCount">0</span></div>
+        </div>
+      </div>
+
+      <div class="code-section">
+        <div class="code-header">
+          <h3 style="color: #64b5f6; margin: 0 0 1rem 0;">C++ Code - subsetsWithDup</h3>
+          <div class="variable-display" id="currentVariables">
+            <div class="variable-name">Current State:</div>
+            <div id="variableList">Ready to execute</div>
+          </div>
+        </div>
+
+        <div class="code-content" id="codeContent"></div>
+
+        <div class="state-panel">
+          <h4>📊 Execution State</h4>
+          <div id="stateContent">
+            <div class="state-item">
+              <div id="pathDisplay"><span class="variable-name">path:</span> <span class="variable-value">[]</span></div>
+            </div>
+            <div class="state-item">
+              <div id="ansDisplay"><span class="variable-name">ans:</span> <span class="variable-value">[]</span></div>
+            </div>
+            <div class="state-item">
+              <div id="startDisplay"><span class="variable-name">start:</span> <span class="variable-value">0</span></div>
+            </div>
+            <div class="state-item">
+              <div id="iDisplay"><span class="variable-name">i:</span> <span class="variable-value">-</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let steps = [];
+    let currentStep = 0;
+    let animationInterval = null;
+    let animationSpeed = 1000;
+    let svg, g, root, treeLayout;
+    let nodeStatus = {};
+    let nodeIdCounter = 0;
+
+    const cppCode = [
+      `<span class="keyword">void</span> <span class="function">backtrack</span>(<span class="type">vector</span>&lt;<span class="type">int</span>&gt;&amp; <span class="variable">nums</span>, <span class="type">vector</span>&lt;<span class="type">int</span>&gt;&amp; <span class="variable">path</span>, <span class="type">vector</span>&lt;<span class="type">vector</span>&lt;<span class="type">int</span>&gt;&gt;&amp; <span class="variable">ans</span>, <span class="type">int</span> <span class="variable">start</span>) {`,
+      `    <span class="variable">ans</span>.<span class="function">push_back</span>(<span class="variable">path</span>);`,
+      `    <span class="keyword">for</span>(<span class="type">int</span> <span class="variable">i</span> = <span class="variable">start</span>; <span class="variable">i</span> &lt; <span class="variable">nums</span>.<span class="function">size</span>(); <span class="variable">i</span>++) {`,
+      `        <span class="keyword">if</span>(<span class="variable">i</span> &gt; <span class="variable">start</span> &amp;&amp; <span class="variable">nums</span>[<span class="variable">i</span>] == <span class="variable">nums</span>[<span class="variable">i</span>-<span class="number">1</span>]) <span class="keyword">continue</span>;`,
+      `        <span class="variable">path</span>.<span class="function">push_back</span>(<span class="variable">nums</span>[<span class="variable">i</span>]);`,
+      `        <span class="function">backtrack</span>(<span class="variable">nums</span>, <span class="variable">path</span>, <span class="variable">ans</span>, <span class="variable">i</span> + <span class="number">1</span>);`,
+      `        <span class="variable">path</span>.<span class="function">pop_back</span>();`,
+      `    }`,
+      `}`
+    ];
+
+    function createParticles() {
+      const particles = document.getElementById('particles');
+      if (!particles) return;
+      
+      particles.innerHTML = '';
+      for (let i = 0; i < 30; i++) {
+        const particle = document.createElement('div');
+        particle.className = 'particle';
+        particle.style.left = Math.random() * 100 + '%';
+        particle.style.animationDelay = Math.random() * 8 + 's';
+        particle.style.animationDuration = (8 + Math.random() * 4) + 's';
+        particles.appendChild(particle);
+      }
+    }
+
+    function showMessage(message, isError = false) {
+      const messageBox = document.getElementById('messageBox');
+      if (!messageBox) return;
+      
+      messageBox.textContent = message;
+      messageBox.className = `message-box ${isError ? 'error' : 'success'} show`;
+      
+      setTimeout(() => {
+        messageBox.classList.remove('show');
+      }, 4000);
+    }
+
+    function updateProgress(percentage) {
+      const progressFill = document.getElementById('progressFill');
+      const progressPercent = document.getElementById('progressPercent');
+      if (progressFill) progressFill.style.width = percentage + '%';
+      if (progressPercent) progressPercent.textContent = Math.round(percentage) + '%';
+    }
+
+    function init() {
+      try {
+        createParticles();
+        renderCode();
+        setupTree();
+        updateSpeed();
+        updateButtonStates();
+        
+        const elements = ['visualizeBtn', 'resetBtn', 'playBtn', 'pauseBtn', 'stepBtn', 'speedSlider'];
+        elements.forEach(id => {
+          const el = document.getElementById(id);
+          if (el) {
+            switch(id) {
+              case 'visualizeBtn': el.addEventListener('click', visualize); break;
+              case 'resetBtn': el.addEventListener('click', reset); break;
+              case 'playBtn': el.addEventListener('click', play); break;
+              case 'pauseBtn': el.addEventListener('click', pause); break;
+              case 'stepBtn': el.addEventListener('click', step); break;
+              case 'speedSlider': el.addEventListener('input', updateSpeed); break;
+            }
+          }
+        });
+        
+        const arrayInput = document.getElementById('arrayInput');
+        if (arrayInput) {
+          arrayInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') visualize();
+          });
+        }
+
+        setTimeout(() => visualize(), 500);
+      } catch (error) {
+        console.error('Initialization error:', error);
+        showMessage('Failed to initialize visualizer', true);
+      }
+    }
+
+    function setPreset(values) {
+      const input = document.getElementById('arrayInput');
+      if (input) {
+        input.value = values;
+        setTimeout(() => visualize(), 100);
+      }
+    }
+
+    function renderCode() {
+      const codeContent = document.getElementById('codeContent');
+      if (!codeContent) return;
+
+      codeContent.innerHTML = cppCode.map((line, index) => `
+        <div class="code-line" id="line-${index}">
+          <div class="code-line-number">${index + 1}</div>
+          <div class="code-line-content">${line}</div>
+        </div>
+      `).join('');
+    }
+
+    function setupTree() {
+      const treeContainer = document.getElementById('treeContainer');
+      if (!treeContainer) return;
+      
+      try {
+        const rect = treeContainer.getBoundingClientRect();
+        const width = rect.width || 800;
+        const height = rect.height || 600;
+        
+        // Clear existing content except stats panel
+        const statsPanel = treeContainer.querySelector('#statsPanel');
+        treeContainer.innerHTML = '';
+        if (statsPanel) {
+          treeContainer.appendChild(statsPanel);
+        } else {
+          treeContainer.innerHTML = `
+            <div class="stats-panel" id="statsPanel" style="display: none;">
+              <div><strong>Input:</strong> <span id="currentInput">-</span></div>
+              <div><strong>Total Steps:</strong> <span id="totalSteps">0</span></div>
+              <div><strong>Current Step:</strong> <span id="currentStep">0</span></div>
+              <div><strong>Progress:</strong> <span id="progressPercent">0%</span></div>
+              <div><strong>Subsets Found:</strong> <span id="subsetsCount">0</span></div>
+            </div>
+          `;
+        }
+
+        svg = d3.select("#treeContainer").append("svg")
+          .attr("width", width)
+          .attr("height", height)
+          .call(d3.zoom().on("zoom", (event) => {
+            if (g) g.attr("transform", event.transform);
+          }));
+        
+        g = svg.append("g");
+        treeLayout = d3.tree().size([height - 100, width - 200]);
+      } catch (error) {
+        console.error('Tree setup error:', error);
+      }
+    }
+
+    function generateSteps(nums) {
+      try {
+        steps = [];
+        let ans = [];
+        let path = [];
+        nodeIdCounter = 0;
+        nodeStatus = {};
+
+        nums.sort((a, b) => a - b);
+
+        function backtrack(start, parentId) {
+          const currentNodeId = ++nodeIdCounter;
+          nodeStatus[currentNodeId] = 'default';
+
+          const pathLabel = path.length > 0 ? `[${path.join(',')}]` : '[]';
+          
+          // Line 2: ans.push_back(path)
+          steps.push({
+            type: 'add_to_ans',
+            line: 1,
+            path: [...path],
+            ans: [...ans.map(a => [...a])],
+            start,
+            i: null,
+            nodeId: currentNodeId,
+            parentId,
+            label: pathLabel
+          });
+          
+          ans.push([...path]);
+          
+          // Line 3: for loop
+          for (let i = start; i < nums.length; i++) {
+            steps.push({
+              type: 'for_iteration',
+              line: 2,
+              path: [...path],
+              ans: [...ans.map(a => [...a])],
+              start, i, nodeId: currentNodeId
+            });
+            
+            // Line 4: duplicate check
+            const isDuplicate = i > start && nums[i] === nums[i - 1];
+            steps.push({
+              type: 'duplicate_check',
+              line: 3,
+              path: [...path],
+              ans: [...ans.map(a => [...a])],
+              start, i, nodeId: currentNodeId,
+              isDuplicate
+            });
+            
+            if (isDuplicate) {
+              steps.push({
+                type: 'skip_duplicate',
+                line: 3,
+                path: [...path],
+                ans: [...ans.map(a => [...a])],
+                start, i, nodeId: currentNodeId
+              });
+              continue;
+            }
+
+            // Line 5: push to path
+            path.push(nums[i]);
+            steps.push({
+              type: 'push_path',
+              line: 4,
+              path: [...path],
+              ans: [...ans.map(a => [...a])],
+              start, i, nodeId: currentNodeId,
+              value: nums[i]
+            });
+
+            // Line 6: recursive call
+            steps.push({
+              type: 'recursive_call',
+              line: 5,
+              path: [...path],
+              ans: [...ans.map(a => [...a])],
+              start, i, nodeId: currentNodeId
+            });
+            
+            backtrack(i + 1, currentNodeId);
+            
+            steps.push({
+              type: 'return_from_recursion',
+              line: 5,
+              path: [...path],
+              ans: [...ans.map(a => [...a])],
+              start, i, nodeId: currentNodeId
+            });
+
+            // Line 7: pop from path
+            path.pop();
+            steps.push({
+              type: 'pop_path',
+              line: 6,
+              path: [...path],
+              ans: [...ans.map(a => [...a])],
+              start, i, nodeId: currentNodeId
+            });
+          }
+          
+          steps.push({
+            type: 'function_end',
+            line: 7,
+            path: [...path],
+            ans: [...ans.map(a => [...a])],
+            start, i: nums.length, nodeId: currentNodeId
+          });
+        }
+
+        backtrack(0, null);
+        return true;
+      } catch (error) {
+        console.error('Step generation error:', error);
+        return false;
+      }
+    }
+
+    function visualize() {
+      try {
+        const arrayInput = document.getElementById('arrayInput');
+        const rawInput = arrayInput ? arrayInput.value : '';
+        
+        if (!rawInput.trim()) {
+          showMessage("Please enter an array.", true);
+          return;
+        }
+        
+        const nums = rawInput.split(',')
+          .map(s => s.trim())
+          .filter(s => s !== '')
+          .map(s => parseInt(s))
+          .filter(n => !isNaN(n));
+          
+        if (nums.length === 0) {
+          showMessage("Invalid input. Please use comma-separated numbers.", true);
+          return;
+        }
+        
+        reset();
+        
+        if (!generateSteps(nums)) {
+          showMessage("Failed to generate steps", true);
+          return;
+        }
+        
+        if (steps.length > 0) {
+          const treeData = buildHierarchy(steps);
+          if (treeData) {
+            root = d3.hierarchy(treeData);
+            if (root) {
+              root.x0 = 300;
+              root.y0 = 0;
+              updateTree(root);
+            }
+          }
+          
+          const currentInputEl = document.getElementById('currentInput');
+          const totalStepsEl = document.getElementById('totalSteps');
+          const statsPanelEl = document.getElementById('statsPanel');
+          
+          if (currentInputEl) currentInputEl.textContent = nums.join(', ');
+          if (totalStepsEl) totalStepsEl.textContent = steps.length.toString();
+          if (statsPanelEl) statsPanelEl.style.display = 'block';
+        }
+        
+        currentStep = 0;
+        updateButtonStates();
+        showMessage("Tree generated successfully! Click Play to start animation.", false);
+      } catch (error) {
+        console.error('Visualization error:', error);
+        showMessage("Failed to visualize", true);
+      }
+    }
+
+    function buildHierarchy(steps) {
+      try {
+        const nodes = {};
+        let treeData = null;
+
+        steps.forEach(step => {
+          if (step.type === 'add_to_ans' && step.nodeId) {
+            if (!nodes[step.nodeId]) {
+              nodes[step.nodeId] = {
+                id: step.nodeId,
+                name: step.label || '[]',
+                children: []
+              };
+            }
+            
+            if (step.parentId === null) {
+              treeData = nodes[step.nodeId];
+            } else if (step.parentId && nodes[step.parentId]) {
+              if (!nodes[step.parentId].children.includes(nodes[step.nodeId])) {
+                nodes[step.parentId].children.push(nodes[step.nodeId]);
+              }
+            }
+          }
+        });
+        
+        return treeData || { id: 1, name: '[]', children: [] };
+      } catch (error) {
+        console.error('Hierarchy building error:', error);
+        return { id: 1, name: '[]', children: [] };
+      }
+    }
+
+    function updateTree(source) {
+      if (!root || !g || !treeLayout || !svg) return;
+      
+      try {
+        const rect = document.getElementById('treeContainer')?.getBoundingClientRect();
+        const width = rect?.width || 800;
+        const height = rect?.height || 600;
+        
+        treeLayout.size([height - 100, width - 200]);
+        
+        const treeData = treeLayout(root);
+        const nodes = treeData.descendants();
+        const links = treeData.links();
+
+        nodes.forEach(d => { d.y = d.depth * 180 + 50; });
+
+        const node = g.selectAll("g.node")
+          .data(nodes, d => d.data.id);
+
+        const nodeEnter = node.enter().append("g")
+          .attr("class", "node default")
+          .attr("id", d => `node-${d.data.id}`)
+          .attr("transform", `translate(${source.y0 || 50}, ${source.x0 || 300})`)
+          .style("opacity", 0);
+
+        nodeEnter.append("circle")
+          .attr("r", 25)
+          .style("fill", "#1f2937")
+          .style("stroke", "#4b5563");
+
+        nodeEnter.append("text")
+          .attr("dy", ".35em")
+          .attr("text-anchor", "middle")
+          .text(d => {
+            const name = d.data.name || '';
+            return name.length > 12 ? name.substring(0, 9) + '...' : name;
+          });
+
+        const nodeUpdate = nodeEnter.merge(node);
+        
+        nodeUpdate.transition()
+          .duration(750)
+          .attr("transform", d => `translate(${d.y}, ${d.x})`)
+          .style("opacity", 1);
+
+        node.exit().transition()
+          .duration(750)
+          .attr("transform", `translate(${source.y}, ${source.x})`)
+          .style("opacity", 0)
+          .remove();
+
+        const link = g.selectAll("path.link")
+          .data(links, d => d.target.data.id);
+
+        const linkEnter = link.enter().insert("path", "g")
+          .attr("class", "link")
+          .attr("d", d3.linkHorizontal()
+            .x(() => source.y0 || 50)
+            .y(() => source.x0 || 300));
+
+        linkEnter.merge(link).transition()
+          .duration(750)
+          .attr("d", d3.linkHorizontal()
+            .x(d => d.y)
+            .y(d => d.x));
+
+        link.exit().transition()
+          .duration(750)
+          .attr("d", d3.linkHorizontal()
+            .x(() => source.y)
+            .y(() => source.x))
+          .remove();
+
+        root.each(d => {
+          d.x0 = d.x;
+          d.y0 = d.y;
+        });
+      } catch (error) {
+        console.error('Tree update error:', error);
+      }
+    }
+
+    function executeStep() {
+      if (currentStep >= steps.length) {
+        pause();
+        showMessage("Animation completed!", false);
+        return;
+      }
+
+      try {
+        const step = steps[currentStep];
+        
+        // Highlight code line
+        document.querySelectorAll('.code-line').forEach(el => el.classList.remove('active'));
+        const lineElement = document.getElementById(`line-${step.line}`);
+        if (lineElement) {
+          lineElement.classList.add('active');
+          lineElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+
+        updateStateDisplay(step);
+        updateVariablesDisplay(step);
+        updateNodeStatus(step);
+
+        const currentStepEl = document.getElementById('currentStep');
+        if (currentStepEl) currentStepEl.textContent = (currentStep + 1).toString();
+        
+        updateProgress(((currentStep + 1) / steps.length) * 100);
+        
+        const subsetsCountEl = document.getElementById('subsetsCount');
+        if (subsetsCountEl && step.ans) {
+          const uniqueSubsets = new Set(step.ans.map(arr => JSON.stringify(arr.sort()))).size;
+          subsetsCountEl.textContent = uniqueSubsets.toString();
+        }
+
+        currentStep++;
+      } catch (error) {
+        console.error('Step execution error:', error);
+        pause();
+      }
+    }
+
+    function updateStateDisplay(step) {
+      try {
+        const elements = {
+          pathDisplay: `<span class="variable-name">path:</span> <span class="variable-value">[${step.path.join(', ')}]</span>`,
+          startDisplay: `<span class="variable-name">start:</span> <span class="variable-value">${step.start}</span>`,
+          iDisplay: `<span class="variable-name">i:</span> <span class="variable-value">${step.i !== null && step.i !== undefined ? step.i : '-'}</span>`
+        };
+
+        Object.entries(elements).forEach(([id, content]) => {
+          const el = document.getElementById(id);
+          if (el) el.innerHTML = content;
+        });
+
+        const ansDisplay = document.getElementById('ansDisplay');
+        if (ansDisplay && step.ans) {
+          const ansStr = step.ans.map(arr => `[${arr.join(',')}]`).join(', ');
+          const truncated = ansStr.length > 50 ? ansStr.substring(0, 47) + '...' : ansStr;
+          ansDisplay.innerHTML = `<span class="variable-name">ans:</span> <span class="variable-value">[${truncated}]</span>`;
+        }
+      } catch (error) {
+        console.error('State display error:', error);
+      }
+    }
+
+    function updateVariablesDisplay(step) {
+      const variableList = document.getElementById('variableList');
+      if (!variableList) return;
+
+      const descriptions = {
+        'add_to_ans': 'Adding current path to answer set',
+        'for_iteration': `Loop iteration: i = ${step.i}`,
+        'duplicate_check': step.isDuplicate ? `Duplicate found at index ${step.i}` : `No duplicate at index ${step.i}`,
+        'skip_duplicate': 'Skipping duplicate element',
+        'push_path': `Adding nums[${step.i}] = ${step.value} to path`,
+        'recursive_call': `Calling backtrack(${step.i + 1})`,
+        'return_from_recursion': 'Returning from recursive call',
+        'pop_path': 'Removing last element from path (backtrack)',
+        'function_end': 'Function execution complete'
+      };
+
+      variableList.textContent = descriptions[step.type] || 'Executing step...';
+    }
+
+    function updateNodeStatus(step) {
+      try {
+        if (!step.nodeId) return;
+
+        switch(step.type) {
+          case 'add_to_ans':
+            nodeStatus[step.nodeId] = 'exploring';
+            break;
+          case 'return_from_recursion':
+            nodeStatus[step.nodeId] = 'backtracked';
+            break;
+          case 'function_end':
+            nodeStatus[step.nodeId] = 'completed';
+            break;
+        }
+
+        Object.entries(nodeStatus).forEach(([nodeId, status]) => {
+          const nodeElement = d3.select(`#node-${nodeId}`);
+          if (!nodeElement.empty()) {
+            nodeElement.attr("class", `node ${status}`);
+          }
+        });
+      } catch (error) {
+        console.error('Node status update error:', error);
+      }
+    }
+
+    function reset() {
+      try {
+        pause();
+        steps = [];
+        currentStep = 0;
+        nodeStatus = {};
+        
+        setupTree();
+        
+        document.querySelectorAll('.code-line').forEach(el => el.classList.remove('active'));
+        
+        const resetElements = {
+          pathDisplay: `<span class="variable-name">path:</span> <span class="variable-value">[]</span>`,
+          ansDisplay: `<span class="variable-name">ans:</span> <span class="variable-value">[]</span>`,
+          startDisplay: `<span class="variable-name">start:</span> <span class="variable-value">0</span>`,
+          iDisplay: `<span class="variable-name">i:</span> <span class="variable-value">-</span>`
+        };
+
+        Object.entries(resetElements).forEach(([id, content]) => {
+          const el = document.getElementById(id);
+          if (el) el.innerHTML = content;
+        });
+
+        const variableList = document.getElementById('variableList');
+        if (variableList) variableList.textContent = 'Ready to execute';
+
+        ['currentStep', 'totalSteps', 'subsetsCount'].forEach(id => {
+          const el = document.getElementById(id);
+          if (el) el.textContent = '0';
+        });
+
+        const statsPanel = document.getElementById('statsPanel');
+        if (statsPanel) statsPanel.style.display = 'none';
+        
+        updateProgress(0);
+        updateButtonStates();
+      } catch (error) {
+        console.error('Reset error:', error);
+      }
+    }
+
+    function play() {
+      if (animationInterval || steps.length === 0) return;
+      
+      animationInterval = setInterval(() => {
+        executeStep();
+        if (currentStep >= steps.length) {
+          pause();
+        }
+      }, animationSpeed);
+      
+      updateButtonStates();
+    }
+
+    function pause() {
+      if (animationInterval) {
+        clearInterval(animationInterval);
+        animationInterval = null;
+      }
+      updateButtonStates();
+    }
+
+    function step() {
+      if (animationInterval) pause();
+      if (currentStep < steps.length) {
+        executeStep();
+      }
+    }
+
+    function updateSpeed() {
+      const speedSlider = document.getElementById('speedSlider');
+      const speedLabel = document.getElementById('speedLabel');
+      
+      if (speedSlider && speedLabel) {
+        animationSpeed = 2100 - parseInt(speedSlider.value);
+        speedLabel.textContent = (animationSpeed / 1000).toFixed(1) + 's';
+        
+        if (animationInterval) {
+          pause();
+          play();
+        }
+      }
+    }
+
+    function updateButtonStates() {
+      const isVisualized = steps.length > 0;
+      const isFinished = currentStep >= steps.length;
+      const isPlaying = !!animationInterval;
+
+      const buttons = {
+        playBtn: !isVisualized || isFinished || isPlaying,
+        pauseBtn: !isPlaying,
+        stepBtn: !isVisualized || isFinished || isPlaying
+      };
+
+      Object.entries(buttons).forEach(([id, disabled]) => {
+        const el = document.getElementById(id);
+        if (el) el.disabled = disabled;
+      });
+    }
+
+    window.addEventListener('resize', () => {
+      if (root) {
+        setupTree();
+        updateTree(root);
+      }
+    });
+
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', init);
+    } else {
+      init();
+    }
+  </script>
+</body>
+</html>
